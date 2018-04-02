@@ -17,6 +17,7 @@ I used these suppliers, but I make no warrantee to their availability, quality o
 ### Recovered & 2nd hand:
 
 The keyswitches came from a second-hand Dell AT102W mechanical keyboard from eBay, about £30.
+Brand new keys are available for £42 -- http://www.amazon.co.uk/gp/product/B00ELAXK98
 
 Wires were from an old ethernet cable (these work out very well and are cheaper than regular cable)
 

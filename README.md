@@ -25,3 +25,9 @@ Wires were from an old ethernet cable (these work out very well and are cheaper 
 * Standoffs: 9mm is just enough space between the plates. £3 -- http://www.amazon.co.uk/gp/product/B00AO40QTW
 * Bumpon feet: £2 -- http://www.amazon.co.uk/gp/product/B00EY6I49K
 * Diodes for switches: £1.40 -- http://www.amazon.co.uk/gp/product/B00B47F49A
+
+### Example
+
+This uses the 3D printed key caps with enamel paint in-fill. The colors leaked into the bulk of the plastic. The 'E' key was painted with white first, then the colors -- and looks much better.
+
+![Image of Keyboard](https://github.com/i-e-b/Keyboard/blob/master/built.jpg)

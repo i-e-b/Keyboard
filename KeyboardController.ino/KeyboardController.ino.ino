@@ -93,6 +93,8 @@ symbols layout
 
 #define SCAN_SIZE 48
 
+#define RM(a,b) (-b) /* remap symbol lookup - b is index into the remap table. These are global across all source maps, so be careful */
+
 // 'Macro' keys -- output whole strings with one keypress. Customise to your workflow.
 int macroMap[0] = {};
 const char* macroStrings[SCAN_SIZE] =
@@ -146,32 +148,47 @@ int fkeysMap[SCAN_SIZE] = // function keys
   /*40*/x,x,x,x, x, x,x, KEY_NUM_LOCK
 };
 
-// KEY_BACKSLASH -> hash/tilde
-// KEY_TILDE -> backtick/log not
-const int KEY_NON_US_BACKSLASH = 0 - '\\'; // I cant get the backslash key to work any other way :-(
-const int KEY_BACKTICK = KEY_TILDE; // wrong on UK layout
-const int KEY_NON_US_HASH = KEY_BACKSLASH;
-const int KEY_NON_US_TILDE = 0 - '~';
+// These two keys don't map correctly, so we bump them over to the symbol re-map:
+  // KEY_BACKSLASH -> hash/tilde
+  // KEY_TILDE -> backtick/log not
+
 int numberMap [SCAN_SIZE] = // number keys, hex, plus a few symbols
 {
-  /* 0*/x, x, KEY_NON_US_TILDE, KEY_NON_US_HASH, KEY_ESC, x, x, x, KEY_0, KEY_F,
+  /* 0*/x, x, RM('~', 22), RM('#', 23), KEY_ESC, x, x, x, KEY_0, KEY_F,
   /*10*/KEY_E, KEY_D, x, x, KEY_PERIOD, KEY_COMMA,x, x, x, x,
   /*20*/KEY_9, KEY_8, KEY_7, KEY_C, x, x, x,x, x, KEY_DELETE,
   /*30*/KEY_BACKSPACE, x, KEY_6, KEY_5, KEY_4, KEY_B, KEYPAD_PLUS, x, KEY_X, x,
   /*40*/x,x,x,x, KEY_3, KEY_2, KEY_1, KEY_A
 };
 
-const int SPECIAL_GBP = -2;
-const int SPECIAL_EURO = -3;
-int symbolMap [SCAN_SIZE] = // special symbols. These are done with write so can be any printable
+// Special symbols. Microsoft RDP client has bugs that make this complex:
+// If an entry in the symbolMap is negative, we look it up in 'symbolMapBase' and 'symbolMapMods' to get a proper key-press
+int symbolMap [SCAN_SIZE] =
 {
-  /* 0*/'@', '&', '>', '<', KEY_ESC, x, x, x, '?', '|',
-  /*10*/'\\', '-', '*', '\'', '}', '{',x, x, x, x,
-  /*20*/'!', ':', ';', '=', '/', '"', ']', '[', x, KEY_DELETE,
-  /*30*/KEY_BACKSPACE, x, ')', '(', '`', '^', '+', x, '$', '%',
-  /*40*/x,x,x,x, SPECIAL_GBP, SPECIAL_EURO, x, x
+  /* 0*/RM('@',2), RM('&',5), RM('>',6), RM('<',7), KEY_ESC, x, x, x, RM('?',8), RM('|',9),
+  /*10*/'\\', '-', RM('*',10), '\'', RM('}',11), RM('{',12),x, x, x, x,
+  /*20*/RM('!',13), RM(':',14), ';', '=', '/', RM('"',15), ']', '[', x, KEY_DELETE,
+  /*30*/KEY_BACKSPACE, x, RM(')',16), RM('(',17), '`', RM('^',18), RM('+',19), x, RM('$',20), RM('%',21),
+  /*40*/x,x,x,x, RM('£',3), RM('€',4), x, x
 };
 
+// KEY_BACKSLASH -> # ~
+// KEY_TILDE -> ` ¬
+// See https://www.pjrc.com/teensy/td_keyboard.html
+// Note that zero can't be used
+int symbolMapBase [44] = { // if an entry in the symbolMap is negative, we look it up here to get a base character
+  x, x, /*@*/KEY_QUOTE, /*£*/ KEY_3, /*€*/ KEY_4, /*&*/ KEY_7, /* > */ KEY_PERIOD, /* < */ KEY_COMMA,
+  /*?*/ KEY_SLASH, /*|*/ '\\', /* * */ KEY_8, /*}*/ ']', /*{*/ '[', /*!*/ KEY_1, /*:*/ ';', /*"*/ KEY_2,
+  /*)*/KEY_0, /*(*/ KEY_9, /*^*/ KEY_6, /*+*/ '=', /*$*/ KEY_4, /*%*/ KEY_5, /*~*/ KEY_BACKSLASH, /*#*/KEY_BACKSLASH
+};
+#define MK_x 0
+#define MK_S MODIFIERKEY_SHIFT
+#define MK_CA MODIFIERKEY_CTRL | MODIFIERKEY_ALT
+int symbolMapMods [44] = { // if an entry in the symbolMap is negative, we look it up here to get a set of modifiers to press
+  x, x, /*@*/MK_S, /*£*/ MK_S, /*€*/ MK_CA, /*&*/ MK_S, /* > */ MK_S, /* < */ MK_S,
+  /*?*/ MK_S, /*|*/ MK_S, /* * */ MK_S, /*}*/ MK_S, /*{*/ MK_S, /*!*/ MK_S, /*:*/MK_S, /*"*/ MK_S,
+  /*)*/MK_S, /*(*/ MK_S, /*^*/MK_S, /*+*/ MK_S, /*$*/ MK_S, /*%*/ MK_S, /*~*/ MK_S, /*#*/ MK_x
+};
 
 // the used map switched by mode keys
 int* currentMap = baseMap;
@@ -301,9 +318,15 @@ void loop() {
     // Chain of `if`s to handle special maps...
     if (currentMap == symbolMap) {
       int val = currentMap[idx];
-      if (val == SPECIAL_GBP) {tapKeyWithMods(KEY_3, MODIFIERKEY_SHIFT);}
-      else if (val == SPECIAL_EURO) {tapKeyWithMods(KEY_4, MODIFIERKEY_CTRL | MODIFIERKEY_ALT);}
-      else {tapKeyWithMods(val, mods); }
+      if (val < 0) {
+        int real = -val;
+        tapKeyWithMods(symbolMapBase[real], symbolMapMods[real]);
+      } else {tapKeyWithMods(val, mods); }
+    }
+    // handle some awkward keys using the symbol remap
+    else if (currentMap[idx] < 0) {
+      int real = -currentMap[idx];
+      tapKeyWithMods(symbolMapBase[real], symbolMapMods[real]);
     }
     else if (currentMap == macroMap && (idx==IDX_UNDERSCORE_KEY)) { // special mode -- toggle space outputs underscores
       underscoreMode = !underscoreMode;
@@ -311,8 +334,6 @@ void loop() {
     else if (currentMap == macroMap && macroStrings[idx] != 0) {
       smartPrint(macroStrings[idx], /*shifted*/keys[Kshift]);
     }
-    // handle some awkward keys:
-    else if (currentMap[idx] < 0) Keyboard.write(-currentMap[idx]);
     // allow alt-numpad entry:
     else if (currentMap == numberMap && keys[Kalt]) {
       if ((keyboard_leds & USB_LED_NUM_LOCK) == 0) {tapKey(KEY_NUM_LOCK);}// ensure the numlock is on
@@ -372,16 +393,25 @@ void smartPrint(const char *str, bool shifted) {
 
 // momentarily press a key and change modifiers. They get changed back afterwards.
 void tapKeyWithMods(int scanCode, int tempMods) {
-  Keyboard.set_modifier(tempMods);
-  Keyboard.send_now();
-  delay(HID_TAP_WAIT); // Only needed to make Microsoft RDP behave.
-  
-  Keyboard.press(scanCode);
-  delay(HID_TAP_WAIT);
-  Keyboard.release(scanCode);
+  if (tempMods != lastMods){
+    Keyboard.set_modifier(tempMods);
+    Keyboard.send_now();
+    delay(HID_TAP_WAIT); // Only needed to make Microsoft RDP behave.
+  }
 
-  Keyboard.set_modifier(lastMods);
+  delay(HID_TAP_WAIT);  
+  Keyboard.press(scanCode);
   Keyboard.send_now();
+  delay(HID_TAP_WAIT);
+  
+  Keyboard.release(scanCode);
+  Keyboard.send_now();
+  
+  if (tempMods != lastMods){
+    delay(HID_TAP_WAIT);
+    Keyboard.set_modifier(lastMods);
+    Keyboard.send_now();
+  }
 }
 
 int handleMouseKeys(int key, int medium, int slow, int isRepeat) {

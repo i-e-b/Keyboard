@@ -9,7 +9,9 @@ const int Kshift = 19, Kctrl = 7, Kalt = 18, Kgui = 17;
 const int Mnum = 28, Mmov = 16, Mfn = 5, Mmak = 6, Msym = 31;
 
 // A safe wait time between keystrokes so most OSs won't rate limit the input.
-#define HID_TAP_WAIT 17
+// When connected across RDP/VNC connections, modifier key pressed can get missed.
+// If that happens, try increasing this.
+#define HID_TAP_WAIT 30
 // how many cycles before a key is considered 'up'
 // Longer is a stronger debounce, but more delay in releasing keys.
 #define DEBOUNCE_COUNT 25
@@ -18,7 +20,7 @@ const int Mnum = 28, Mmov = 16, Mfn = 5, Mmak = 6, Msym = 31;
 #define KEY_DOWN_THRESH 5
 
 // How many key-scan cycles before mouse is updated? Higher values = slower mouse and scroll
-#define MOUSE_RATE 15
+#define MOUSE_RATE 30
 // Adjustment for OS mouse speed setting. Higher value = slower mouse
 #define MOUSE_SPEED_ADJUST 1
 // How long will the mouse accelerate? Affects terminal speed
@@ -511,7 +513,7 @@ int readSingleKey(int col, int row) {
   return state;
 }
 
-// Turn all non modifier keys off
+// Turn all non modifier keys off 
 void clearKeys() {
   // Reset the keyboard state for the host
   Keyboard.set_key1(0);
